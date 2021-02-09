@@ -1,0 +1,3 @@
+VALIDATOR_VERSION: 0.0.71
+COMMAND: validate.py data.csv --ignore StreetAddressHasNumber --ignore LatLngDuplicationValidator
+PYTHON_VERSION: sys.version_info(major=3, minor=7, micro=2, releaselevel='final', serial=0)
