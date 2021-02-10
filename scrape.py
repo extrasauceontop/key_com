@@ -4,7 +4,9 @@ import json
 from concurrent import futures
 from lxml import html
 from sgrequests import SgRequests
+from sglogging import sglog
 
+log = sglog.SgLogSetup().get_logger()
 
 def write_output(data):
     with open('data.csv', mode='w', encoding='utf8', newline='') as output_file:
@@ -20,6 +22,7 @@ def write_output(data):
 
 
 def generate_urls():
+    #log = sglog.SgLogSetup().get_logger()
     urls = []
     session = SgRequests()
     r = session.get('https://www.key.com/locations/')
@@ -39,6 +42,8 @@ def generate_urls():
             links = tree.xpath("//article[contains(@class, 'card')]//a[contains(@href, 'locations/')]/@href")
             for l in links:
                 urls.append(f'https://www.key.com{l}')
+    
+    log.info("number of urls collected: " + str(len(urls)))
     return urls
 
 
@@ -52,6 +57,7 @@ def get_from_json(source):
 
     locator_domain = 'https://key.com/'
     location_name = j.get('name') or '<MISSING>'
+    log.info("location name: " + location_name)
     a = j.get('address') or {}
     street_address = a.get('streetAddress') or '<MISSING>'
     city = a.get('addressLocality') or '<MISSING>'
@@ -106,6 +112,8 @@ def get_data(url):
     }
     session = SgRequests()
     r = session.get(url, headers=headers)
+
+    log.info("targeted url: " + url)
 
     source = r.text
     row = get_from_json(source)
