@@ -20,7 +20,10 @@ latitudes = []
 longitudes = []
 hours_of_operations = []
 
+x = 0
 for search_lat, search_lon in search:
+    print(x)
+    x = x+1
     coords = []
     url = f"https://www.key.com/loc/DirectorServlet?action=getEntities&entity=BRCH&entity=ATM&entity=MCD&lat={search_lat}&lng={search_lon}&distance=1000&callback=myJsonpCallback"
 
@@ -32,7 +35,7 @@ for search_lat, search_lon in search:
         search.mark_found(coords)
         continue
 
-    # print(len(response))
+    print(len(response))
     # with open("file.txt", "w") as output:
     #     json.dump(response, output, indent=4)
 
