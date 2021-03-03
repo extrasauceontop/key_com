@@ -21,17 +21,21 @@ longitudes = []
 hours_of_operations = []
 
 for search_lat, search_lon in search:
+    coords = []
     url = f"https://www.key.com/loc/DirectorServlet?action=getEntities&entity=BRCH&entity=ATM&entity=MCD&lat={search_lat}&lng={search_lon}&distance=1000&callback=myJsonpCallback"
 
     response = requests.get(url).text
     response = response.replace("myJsonpCallback(", "")[:-1]
-    response = json.loads(response)
+    try:
+        response = json.loads(response)
+    except Exception:
+        search.mark_found(coords)
+        continue
 
     # print(len(response))
     # with open("file.txt", "w") as output:
     #     json.dump(response, output, indent=4)
 
-    coords = []
     for location in response:
         locator_domain = "key.com"
         page_url = url
