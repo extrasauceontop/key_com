@@ -33,7 +33,7 @@ for search_lat, search_lon in search:
     try:
         response = json.loads(response)
     except Exception:
-        print(response)
+        print("fail: " + response)
         search.mark_found(coords)
         continue
 
@@ -129,5 +129,17 @@ df = pd.DataFrame(
 
 df = df.fillna("<MISSING>")
 df = df.replace(r"^\s*$", "<MISSING>", regex=True)
+
+df["dupecheck"] = (
+    df["location_name"]
+    + df["street_address"]
+    + df["city"]
+    + df["state"]
+    + df["location_type"]
+)
+df = df.drop_duplicates(subset=["dupecheck"])
+df = df.drop(columns=["dupecheck"])
+df = df.replace(r"^\s*$", "<MISSING>", regex=True)
+df = df.fillna("<MISSING>")
 
 df.to_csv("data.csv", index=False)
