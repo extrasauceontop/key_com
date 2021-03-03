@@ -1,181 +1,125 @@
-import csv
+import requests
 import json
+import pandas as pd
+from sgzip.dynamic import DynamicGeoSearch, SearchableCountries
 
-from concurrent import futures
-from lxml import html
-from sgrequests import SgRequests
-from sglogging import sglog
+search = DynamicGeoSearch(country_codes=[SearchableCountries.USA])
 
-log = sglog.SgLogSetup().get_logger()
+locator_domains = []
+page_urls = []
+location_names = []
+street_addresses = []
+citys = []
+states = []
+zips = []
+country_codes = []
+store_numbers = []
+phones = []
+location_types = []
+latitudes = []
+longitudes = []
+hours_of_operations = []
 
+for search_lat, search_lon in search:
+    url = "https://www.key.com/loc/DirectorServlet?action=getEntities&entity=BRCH&entity=ATM&entity=MCD&lat=" + str(search_lat) + "&lng=" + search_lon + "&distance=1000&callback=myJsonpCallback"
 
-def write_output(data):
-    with open("data.csv", mode="w", encoding="utf8", newline="") as output_file:
-        writer = csv.writer(
-            output_file, delimiter=",", quotechar='"', quoting=csv.QUOTE_ALL
-        )
+    response = requests.get(url).text
+    response = response.replace("myJsonpCallback(", "")[:-1]
+    response = json.loads(response)
 
-        headers = [
-            "locator_domain",
-            "page_url",
-            "location_name",
-            "street_address",
-            "city",
-            "state",
-            "zip",
-            "country_code",
-            "store_number",
-            "phone",
-            "location_type",
-            "latitude",
-            "longitude",
-            "hours_of_operation",
-        ]
-        writer.writerow(headers)
+    # print(len(response))
+    # with open("file.txt", "w") as output:
+    #     json.dump(response, output, indent=4)
 
-        for row in data:
-            writer.writerow(row)
+    coords = []
+    for location in response:
+        locator_domain = "key.com"
+        page_url = url
 
+        location_properties = location["location"]["entity"]["properties"]
+        for loc_property in location_properties:
+            if loc_property["name"] == "LocationName":
+                location_name = loc_property["value"]
+            
+            if loc_property["name"] == "AddressLine":
+                address = loc_property["value"]
+            
+            if loc_property["name"] == "Locality":
+                city = loc_property["value"]
 
-def generate_urls():
-    urls = []
-    session = SgRequests()
-    r = session.get("https://www.key.com/locations/")
-    tree = html.fromstring(r.text)
-    states = tree.xpath("//ul[@class='grid__columns']/li/a/@href")
-    for s in states:
-        r = session.get(f"https://www.key.com{s}")
-        tree = html.fromstring(r.text)
-        cities = tree.xpath(
-            "//ul[@class='alpha__list']//li/a[contains(@href, '/locations')]/@href"
-        )
-        for c in cities:
-            c = f"https://www.key.com{c}"
-            if c.count("/") == 7:
-                urls.append(c)
-                continue
-            r = session.get(c)
-            tree = html.fromstring(r.text)
-            links = tree.xpath(
-                "//article[contains(@class, 'card')]//a[contains(@href, 'locations/')]/@href"
-            )
-            for l in links:
-                urls.append(f"https://www.key.com{l}")
+            if loc_property["name"] == "Subdivision":
+                state = loc_property["value"]
 
-    log.info("number of urls collected: " + str(len(urls)))
-    return urls
+            if loc_property["name"] == "PostalCode":
+                zipp = loc_property["value"]
 
+            if loc_property["name"] == "CountryRegion":
+                country_code = loc_property["value"]
 
-def get_from_json(source):
-    tree = html.fromstring(source)
-    text = "".join(tree.xpath("//script[@type='application/ld+json']/text()"))
-    try:
-        j = json.loads(text)
-    except:
-        return []
+            if loc_property["name"] == "LocationID":
+                store_number = loc_property["value"]
 
-    locator_domain = "https://key.com/"
-    location_name = j.get("name") or "<MISSING>"
-    log.info("location name: " + location_name)
-    a = j.get("address") or {}
-    street_address = a.get("streetAddress") or "<MISSING>"
-    city = a.get("addressLocality") or "<MISSING>"
-    state = a.get("addressRegion") or "<MISSING>"
-    postal = a.get("postalCode") or "<MISSING>"
-    country_code = "US"
-    page_url = j.get("url") or "<MISSING>"
+            if loc_property["name"] == "Phone1":
+                phone = loc_property["value"]
+            
+            if loc_property["name"] == "LocationType":
+                location_type = loc_property["value"]
+                if location_type == "BRCH":
+                    location_type = "branch"
+                elif location_type == "ATM":
+                    location_type = "ATM"
+                elif location_type == "MCD":
+                    location_type = "Key Private Bank"
+                else:
+                    location_type = "<MISSING>"
+            
+            if loc_property["name"] == "Latitude":
+                latitude = loc_property["value"]
 
-    if page_url:
-        store_number = page_url.split("/")[-2]
-    else:
-        store_number = "<MISSING>"
+            if loc_property["name"] == "Longitude":
+                longitude = loc_property["value"]
+            
+            if loc_property["name"] == "HoursOfOperation":
+                hours = loc_property["value"]
 
-    if page_url.lower().find("brch") != -1:
-        location_type = "Branch"
-    else:
-        location_type = "Private Bank"
-    phone = j.get("telephone") or "<MISSING>"
-    g = j.get("geo") or {}
-    latitude = g.get("latitude") or "<MISSING>"
-    longitude = g.get("longitude") or "<MISSING>"
+        locator_domains.append(locator_domain)
+        page_urls.append(page_url)
+        location_names.append(location_name)
+        street_addresses.append(address)
+        citys.append(city)
+        states.append(state)
+        zips.append(zipp)
+        country_codes.append(country_code)
+        store_numbers.append(store_number)
+        phones.append(phone)
+        location_types.append(location_type)
+        latitudes.append(latitude)
+        longitudes.append(longitude)
+        hours_of_operations.append(hours)
 
-    _tmp = []
-    hours = j.get("openingHoursSpecification") or []
-    for h in hours:
-        day = h.get("dayOfWeek").split("/")[-1] if h.get("dayOfWeek") else ""
-        start = h.get("opens")
-        if not start:
-            _tmp.append(f"{day}: Closed")
-        else:
-            end = h.get("closes")
-            _tmp.append(f"{day}: {start[:-3]} - {end[:-3]}")
-
-    hours_of_operation = ";".join(_tmp) or "<MISSING>"
-
-    if hours_of_operation.count("Closed") == 7:
-        return []
-
-    row = [
-        locator_domain,
-        page_url,
-        location_name,
-        street_address,
-        city,
-        state,
-        postal,
-        country_code,
-        store_number,
-        phone,
-        location_type,
-        latitude,
-        longitude,
-        hours_of_operation,
-    ]
-
-    return row
-
-
-def get_data(url):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "uk-UA,uk;q=0.8,en-US;q=0.5,en;q=0.3",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
+        current_coords = [latitude, longitude]
+        coords.append(current_coords)
+    search.mark_found(coords)
+df = pd.DataFrame(
+    {
+        "locator_domain": locator_domains,
+        "page_url": page_urls,
+        "location_name": location_names,
+        "street_address": street_addresses,
+        "city": citys,
+        "state": states,
+        "zip": zips,
+        "store_number": store_numbers,
+        "phone": phones,
+        "latitude": latitudes,
+        "longitude": longitudes,
+        "hours_of_operation": hours_of_operations,
+        "country_code": country_codes,
+        "location_type": location_types,
     }
-    session = SgRequests()
-    r = session.get(url, headers=headers)
+)
 
-    log.info("targeted url: " + url)
+df = df.fillna("<MISSING>")
+df = df.replace(r"^\s*$", "<MISSING>", regex=True)
 
-    source = r.text
-    row = get_from_json(source)
-
-    return row
-
-
-def fetch_data():
-    out = []
-    s = set()
-    urls = generate_urls()
-
-    with futures.ThreadPoolExecutor(max_workers=10) as executor:
-        tasks = {executor.submit(get_data, url): url for url in urls}
-        for task in futures.as_completed(tasks):
-            row = task.result()
-            if row:
-                line = tuple(row[2:6])
-                if line not in s:
-                    s.add(line)
-                    out.append(row)
-
-    return out
-
-
-def scrape():
-    data = fetch_data()
-    write_output(data)
-
-
-if __name__ == "__main__":
-    scrape()
+df.to_csv("data.csv", index=False)
