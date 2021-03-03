@@ -29,13 +29,14 @@ for search_lat, search_lon in search:
 
     response = requests.get(url).text
     response = response.replace("myJsonpCallback(", "")[:-1]
+    print(url)
     try:
         response = json.loads(response)
     except Exception:
+        print(response)
         search.mark_found(coords)
         continue
 
-    print(len(response))
     # with open("file.txt", "w") as output:
     #     json.dump(response, output, indent=4)
 
