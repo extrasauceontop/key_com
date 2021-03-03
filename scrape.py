@@ -137,9 +137,10 @@ df["dupecheck"] = (
     + df["state"]
     + df["location_type"]
 )
+
 df = df.drop_duplicates(subset=["dupecheck"])
 df = df.drop(columns=["dupecheck"])
 df = df.replace(r"^\s*$", "<MISSING>", regex=True)
 df = df.fillna("<MISSING>")
 
-df.to_csv("data.csv", index=False)
+df.to_csv("data.csv", index=True)
