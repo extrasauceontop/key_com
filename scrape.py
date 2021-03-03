@@ -21,7 +21,7 @@ longitudes = []
 hours_of_operations = []
 
 for search_lat, search_lon in search:
-    url = "https://www.key.com/loc/DirectorServlet?action=getEntities&entity=BRCH&entity=ATM&entity=MCD&lat=" + str(search_lat) + "&lng=" + search_lon + "&distance=1000&callback=myJsonpCallback"
+    url = f"https://www.key.com/loc/DirectorServlet?action=getEntities&entity=BRCH&entity=ATM&entity=MCD&lat={search_lat}&lng={search_lon}&distance=1000&callback=myJsonpCallback"
 
     response = requests.get(url).text
     response = response.replace("myJsonpCallback(", "")[:-1]
